@@ -4,6 +4,7 @@ import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { coderHome, paths } from "./paths"
 import { readJsoncFile, readUserProviders, saveSecret, writeJson } from "./store"
+import { mcpManage } from "./extend"
 import { askSecret, bold, dim, green, red } from "./ui"
 import { readUpstream } from "./upstream"
 
@@ -43,8 +44,10 @@ export function trustCommand(argv: string[]): number {
   return 0
 }
 
-export function mcpCommand(argv: string[]): number {
+export async function mcpCommand(argv: string[]): Promise<number> {
   const [sub, server] = argv
+  const managed = await mcpManage(sub, argv.slice(1))
+  if (managed !== undefined) return managed
   const file = join(coderHome(), "mcp-pins.json")
   const pins: Record<string, Record<string, string>> = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {}
   if (sub === "approve" && server) {
@@ -57,7 +60,11 @@ export function mcpCommand(argv: string[]): number {
     for (const [s, tools] of Object.entries(pins)) console.log(`${bold(s)}: ${Object.keys(tools).length} pinned tools`)
     return 0
   }
-  console.error("Usage: coder mcp approve <server> | coder mcp pins")
+  console.error(
+    "Usage: coder mcp add <name> [--allow host,…] -- <command…> | coder mcp add <name> --url <url>\n" +
+      "       coder mcp import <claude_desktop_config.json | .mcp.json | .vscode/mcp.json | opencode.json>\n" +
+      "       coder mcp list | remove <name> | approve <server> | pins",
+  )
   return 2
 }
 

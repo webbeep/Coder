@@ -5,6 +5,7 @@
 // OPENCODE_CONFIG_CONTENT (Coder's security policy) → admin-managed files.
 // Permission rules from all layers are concatenated and the LAST match wins, so the policy's
 // deny rules can't be undone by a project; the Coder plugin enforces the same rules again in code.
+import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import type { CoderPluginOptions } from "../plugins/coder/server"
@@ -12,6 +13,7 @@ import type { ProviderEntry } from "./connect/formats"
 import { parseJsonc } from "./jsonc"
 import { coderHome, paths } from "./paths"
 import type { SandboxStatus } from "./sandbox-status"
+import { personal, readPersonalMcp, readPersonalPlugins } from "./extend"
 import { type CoderSettings, merge } from "./settings"
 import { fileRef, hasSecret, readJsoncFile, readUserProviders, secretPath, writeJson } from "./store"
 
@@ -94,6 +96,9 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
   const model = user.model ?? team.model ?? firstModel(providers)
   if (!Object.keys(providers).length) warnings.push("No model server connected yet. Run: ./coder connect")
 
+  // Personal additions: `coder skill add`, `coder mcp add/import`, `coder plugin add`, `coder tool new`.
+  const personalMcp = readPersonalMcp()
+  const personalSkills = existsSync(personal.skills()) ? [personal.skills()] : []
   const allowSelfEdit = opts.allowSelfEdit ?? process.env.CODER_ALLOW_SELF_EDIT === "1"
   const pluginOptions: CoderPluginOptions = {
     coderRoot: paths.root,
@@ -114,7 +119,7 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
       allowedDomains: settings.sandbox.allowedDomains,
       extraWrite: settings.sandbox.allowWrite.map((p) => resolve(p)),
       extraDenyRead: settings.sandbox.denyRead.map((p) => resolve(p)),
-      mcp: settings.mcp,
+      mcp: merge(settings.mcp, personalMcp.sandbox),
     },
   }
 
@@ -123,9 +128,11 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
   const plugins: any[] = [{ package: join(paths.plugins, "coder"), options: pluginOptions }]
   const editor = join(paths.plugins, "coder-editor")
   if (existsSync(join(editor, "gui-experimental.cjs"))) plugins.push(editor)
+  plugins.push(...readPersonalPlugins())
   config = merge(config, {
     plugins,
-    skills: [paths.skills],
+    skills: [paths.skills, ...personalSkills],
+    mcp: { servers: personalMcp.servers },
     instructions: [join(knowledgeDir, "INDEX.md"), memoryFile],
     providers,
     permissions: [
@@ -133,6 +140,7 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
       { action: "external_directory", resource: `${slash(knowledgeDir)}/*`, effect: "allow" },
       { action: "external_directory", resource: `${slash(join(home, "memory"))}/*`, effect: "allow" },
       { action: "external_directory", resource: `${slash(paths.skills)}/*`, effect: "allow" },
+      ...personalSkills.map((d) => ({ action: "external_directory", resource: `${slash(d)}/*`, effect: "allow" })),
     ],
   })
   if (model) {
@@ -141,7 +149,8 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
     config.agents = merge(config.agents ?? {}, { title: { model } })
   }
 
-  const configDir = join(paths.local, "config")
+  // Per user and per checkout (tests and multiple checkouts never overwrite each other's config).
+  const configDir = join(home, "run", `config-${createHash("sha256").update(paths.root).digest("hex").slice(0, 10)}`)
   writeJson(join(configDir, "opencode.json"), config, 0o600)
 
   const policy = buildPolicy(settings, home)

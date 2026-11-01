@@ -1,6 +1,6 @@
 {
-  "$comment": "Resource budgets checked on every CI run (test/e2e/run.ts). Tighten them as measurements come in; a jump means a regression.",
-  "maxContextTokens": 40000,
-  "maxPeakRssMB": 1500,
-  "maxRunSeconds": 60
+  "$comment": "Resource budgets checked on every CI run (test/e2e/run.ts). Measured Nov 2026 with OpenCode 2.2.5: ~5.7k tokens context, ~390 MB peak RAM (CLI + server), 1-2.5 s. A jump past these means a regression.",
+  "maxContextTokens": 8000,
+  "maxPeakRssMB": 600,
+  "maxRunSeconds": 30
 }

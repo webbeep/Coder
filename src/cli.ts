@@ -11,6 +11,7 @@ import { detectSandbox } from "./sandbox-status"
 import { loadSettings } from "./settings"
 import { vscodeCommand } from "./vscode"
 import { editorCommand } from "./editor"
+import { pluginCommand, skillCommand, toolCommand } from "./extend"
 import { parseArgs, str } from "./args"
 
 const HELP = `${bold("Coder")} — secure, local-first coding agent (OpenCode ${readUpstream().opencode.version}, hardened)
@@ -28,7 +29,13 @@ Usage: ./coder [command] [args]
   vscode                 Build and install the VS Code extension
   editor build           Rebuild the desktop code editor (after editing its languages.json)
   trust [dir]            Let a reviewed project load its own opencode.json/.opencode
-  mcp approve <server>   Re-approve an MCP server whose tools changed
+
+Extend (skills, MCP servers, plugins and tools from anywhere):
+  skill add <folder|git-url>   Import SKILL.md skills (Claude Code, Codex, OpenCode, Hermes, Pi…) [--team]
+  mcp add <name> -- <cmd…>     Add an MCP server (or --url <url>); mcp import <config.json> imports many
+  mcp approve <server>         Re-approve an MCP server whose tools changed
+  plugin add <name@x.y.z>      Add an OpenCode plugin (pinned; not sandboxed, so review it)
+  tool new <name>              Scaffold a custom tool
   opencode <args…>       Run any OpenCode command with Coder's configuration
 
 Files: settings ${dim("config/coder.jsonc")}, team models ${dim("config/models.jsonc")}, knowledge ${dim("knowledge/")}
@@ -90,6 +97,14 @@ async function main(argv: string[]): Promise<number> {
       return trustCommand(rest)
     case "mcp":
       return mcpCommand(rest)
+    case "skill":
+    case "skills":
+      return skillCommand(rest)
+    case "plugin":
+    case "plugins":
+      return pluginCommand(rest)
+    case "tool":
+      return toolCommand(rest)
     case "opencode":
       return passthrough(rest)
     default:
