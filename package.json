@@ -1,0 +1,14 @@
+{
+  "name": "coder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Secure, local-first coding agent for teams — a hardened OpenCode distribution",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "coder": "bun run src/cli.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {}
+}

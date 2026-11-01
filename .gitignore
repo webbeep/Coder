@@ -1,0 +1,6 @@
+# Local, per-checkout downloads and generated config
+/.coder/
+node_modules/
+dist/
+*.vsix
+.DS_Store
