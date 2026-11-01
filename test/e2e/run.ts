@@ -71,7 +71,8 @@ const server = Bun.serve({
   },
 })
 
-const env = { ...process.env, CODER_HOME: home, NO_COLOR: "1" }
+// OPENCODE_PRINT_LOGS shows the OpenCode server's own log on stderr, so failures are diagnosable.
+const env = { ...process.env, CODER_HOME: home, NO_COLOR: "1", OPENCODE_PRINT_LOGS: "1" }
 async function coder(args: string[], timeoutMs = 300_000) {
   const proc = Bun.spawn([...launcher, ...args], { cwd: project, env, stdout: "pipe", stderr: "pipe", stdin: "ignore" })
   const timer = setTimeout(() => proc.kill(), timeoutMs)

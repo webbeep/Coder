@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { resolve } from "node:path"
 import { isLongLivedContext, normalize, protectedReason, secretReason, sizeLimit } from "../plugins/coder/policy"
 
 const o = {
@@ -12,10 +13,12 @@ const o = {
 }
 
 describe("normalize", () => {
+  // On Windows, resolve() adds the current drive letter ("D:/work/…").
+  const abs = (p: string) => resolve(p).replace(/\\/g, "/")
   test("resolves relative and ~ paths", () => {
-    expect(normalize("src/a.ts", "/work/proj", "/home/me")).toBe("/work/proj/src/a.ts")
-    expect(normalize("~/.ssh/id_rsa", "/work", "/home/me")).toBe("/home/me/.ssh/id_rsa")
-    expect(normalize("../x/../y", "/work/proj", "/home/me")).toBe("/work/y")
+    expect(normalize("src/a.ts", "/work/proj", "/home/me")).toBe(abs("/work/proj/src/a.ts"))
+    expect(normalize("~/.ssh/id_rsa", "/work", "/home/me")).toBe(abs("/home/me/.ssh/id_rsa"))
+    expect(normalize("../x/../y", "/work/proj", "/home/me")).toBe(abs("/work/y"))
   })
 })
 

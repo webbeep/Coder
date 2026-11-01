@@ -80,6 +80,8 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
   const memoryFile = paths.memory()
   const knowledgeDir = paths.knowledge
 
+  // OpenCode's database lives in Coder's folder; SQLite can't create a missing parent folder.
+  mkdirSync(join(home, "data"), { recursive: true })
   if (!existsSync(memoryFile)) {
     mkdirSync(join(memoryFile, ".."), { recursive: true })
     writeFileSync(memoryFile, "# Personal memory\n\nThings Coder should remember about you and your setup. Keep it short.\n")
