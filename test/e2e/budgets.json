@@ -1,0 +1,6 @@
+{
+  "$comment": "Resource budgets checked on every CI run (test/e2e/run.ts). Tighten them as measurements come in; a jump means a regression.",
+  "maxContextTokens": 40000,
+  "maxPeakRssMB": 1500,
+  "maxRunSeconds": 60
+}

@@ -67,4 +67,10 @@ for candidate in "$LOCAL_BUN" "$(command -v bun 2>/dev/null || true)" "$HOME/.bu
 done
 if [ -z "$BUN" ]; then install_bun; BUN=$LOCAL_BUN; fi
 
-exec "$BUN" "$ROOT/src/cli.ts" "$@"
+# Long-running commands (terminal UI, server) leave an exec plan so OpenCode replaces this
+# process instead of running under an idle Bun parent.
+mkdir -p "$ROOT/.coder/run"
+PLAN="$ROOT/.coder/run/exec.$$"
+CODER_EXEC_PLAN="$PLAN" "$BUN" "$ROOT/src/cli.ts" "$@" || exit $?
+if [ -f "$PLAN" ]; then . "$PLAN"; fi
+exit 0

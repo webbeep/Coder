@@ -10,7 +10,7 @@
 //
 // The plugin talks to OpenCode only through its public plugin API, so it has no imports from OpenCode.
 import { createHash } from "node:crypto"
-import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { describeFindings, scanText } from "../../src/guard/scan"
 import { isLongLivedContext, normalize, type PolicyOptions, protectedReason, secretReason, sizeLimit } from "./policy"
@@ -246,12 +246,25 @@ export default {
 
     // --- MCP "rug pull" protection: pin each tool definition the first time it is seen.
     const pinsFile = join(o.coderHome, "mcp-pins.json")
+    // Cached between model requests; re-read only when the file changes (e.g. `coder mcp approve`).
+    let pinCache: { mtime: number; pins: Record<string, Record<string, string>> } = { mtime: -1, pins: {} }
+    const loadPins = () => {
+      let mtime = 0
+      try {
+        mtime = statSync(pinsFile).mtimeMs
+      } catch {}
+      if (mtime !== pinCache.mtime) {
+        let pins: Record<string, Record<string, string>> = {}
+        try {
+          pins = JSON.parse(readFileSync(pinsFile, "utf8"))
+        } catch {}
+        pinCache = { mtime, pins }
+      }
+      return pinCache.pins
+    }
     await ctx.session.hook("context", (ev: { tools: Record<string, { description: string; input: unknown }>; system: { type: "text"; text: string }[] }) => {
       if (!mcpServers.length) return
-      let pins: Record<string, Record<string, string>> = {}
-      try {
-        pins = JSON.parse(readFileSync(pinsFile, "utf8"))
-      } catch {}
+      const pins = loadPins()
       let changed = false
       const blocked: string[] = []
       for (const [tool, def] of Object.entries(ev.tools)) {
@@ -270,6 +283,7 @@ export default {
       if (changed) {
         mkdirSync(dirname(pinsFile), { recursive: true })
         writeFileSync(pinsFile, JSON.stringify(pins, null, 2))
+        pinCache = { mtime: statSync(pinsFile).mtimeMs, pins }
       }
       if (blocked.length)
         ev.system.push({

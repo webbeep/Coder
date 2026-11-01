@@ -8,7 +8,9 @@
 // Usage: bun test/e2e/run.ts
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
+import { appendFileSync } from "node:fs"
 import { join, resolve } from "node:path"
+import budgets from "./budgets.json"
 
 const ROOT = resolve(import.meta.dir, "..", "..")
 // On Windows, call the CLI the way coder.cmd does (spawning .cmd files directly is unreliable).
@@ -20,6 +22,7 @@ mkdirSync(project, { recursive: true })
 writeFileSync(join(project, "hello.txt"), "hello from e2e\n")
 
 const requests: any[] = []
+let firstAgentRequestChars = 0
 const sse = (chunks: unknown[]) =>
   new Response(chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("") + "data: [DONE]\n\n", {
     headers: { "content-type": "text/event-stream" },
@@ -47,6 +50,11 @@ const server = Bun.serve({
     const body: any = await req.json().catch(() => ({}))
     if (!body.model) return Response.json({ error: "model required" }, { status: 400 })
     requests.push(body)
+    if (!firstAgentRequestChars && (body.tools ?? []).length) {
+      // What Coder + OpenCode put in front of the model before any user content: system prompt + tool definitions.
+      const system = (body.messages ?? []).filter((m: any) => m.role === "system")
+      firstAgentRequestChars = JSON.stringify(system).length + JSON.stringify(body.tools).length
+    }
     const stream = body.stream === true
     const tools: string[] = (body.tools ?? []).map((t: any) => t?.function?.name)
     if (!tools.length) return text("E2E title", stream)
@@ -93,7 +101,21 @@ try {
   const connect = await coder(["connect", base, "--name", "e2e", "--no-key", "--yes", "--no-test"])
   check(connect.code === 0, "coder connect")
 
+  // Sample the RSS of every process running the pinned OpenCode binary (CLI + its server) while the agent works.
+  let peakKB = 0
+  const sampler =
+    process.platform === "win32"
+      ? undefined
+      : setInterval(() => {
+          const ps = Bun.spawnSync(["ps", "-A", "-o", "rss=", "-o", "args="]).stdout.toString()
+          let total = 0
+          for (const line of ps.split("\n")) if (line.includes(join(".coder", "opencode"))) total += Number(line.trim().split(/\s+/)[0]) || 0
+          peakKB = Math.max(peakKB, total)
+        }, 100)
+  const started = performance.now()
   const run = await coder(["opencode", "run", "--standalone", "Read hello.txt and report what it says."])
+  const seconds = (performance.now() - started) / 1000
+  if (sampler) clearInterval(sampler)
   const all = run.out + run.err
   check(run.code === 0, "coder opencode run exits 0")
   check(all.includes("E2E_OK saw-file"), "agent called the read tool and answered with its result")
@@ -105,6 +127,21 @@ try {
     audit = readdirSync(auditDir).map((f) => readFileSync(join(auditDir, f), "utf8")).join("")
   } catch {}
   check(audit.includes('"tool":"read"'), "Coder plugin loaded (audit log recorded the read call)")
+
+  const contextTokens = Math.round(firstAgentRequestChars / 4)
+  const peakMB = Math.round(peakKB / 1024)
+  check(contextTokens > 0 && contextTokens <= budgets.maxContextTokens, `context overhead ~${contextTokens} tokens (budget ${budgets.maxContextTokens})`)
+  if (peakKB) check(peakMB <= budgets.maxPeakRssMB, `peak RAM of OpenCode processes ${peakMB} MB (budget ${budgets.maxPeakRssMB})`)
+  check(seconds <= budgets.maxRunSeconds, `agent run took ${seconds.toFixed(1)} s (budget ${budgets.maxRunSeconds})`)
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `### Coder end-to-end (${process.platform})\n\n| Metric | Value | Budget |\n|---|---|---|\n` +
+        `| Context overhead (system prompt + tools) | ~${contextTokens} tokens | ${budgets.maxContextTokens} |\n` +
+        `| Peak RAM, OpenCode processes | ${peakKB ? `${peakMB} MB` : "n/a"} | ${budgets.maxPeakRssMB} MB |\n` +
+        `| Wall time, start to answer | ${seconds.toFixed(1)} s | ${budgets.maxRunSeconds} s |\n\n`,
+    )
+  }
 } finally {
   server.stop(true)
 }

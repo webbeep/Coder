@@ -1,5 +1,5 @@
 // Starts OpenCode (terminal UI, headless server, or the desktop app) with Coder's configuration.
-import { chmodSync, existsSync, mkdirSync, readdirSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { compose, type Composed } from "./config"
 import { coderHome, paths } from "./paths"
@@ -37,7 +37,26 @@ export async function installDeps(): Promise<void> {
   if (r.exitCode !== 0) throw new Error("bun install failed")
 }
 
+const shq = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
+
+/**
+ * macOS/Linux: instead of waiting on OpenCode (an idle Bun process holding ~15-25 MB for the whole
+ * session), write a tiny shell plan that the ./coder launcher sources: it sets the environment and
+ * `exec`s OpenCode in place of the launcher. The plan deletes itself first.
+ */
+export function writeExecPlan(file: string, cmd: string[], env: Record<string, string>): void {
+  const lines = [`rm -f ${shq(file)}`]
+  for (const [k, v] of Object.entries(env)) if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) lines.push(`export ${k}=${shq(v)}`)
+  lines.push("unset CODER_EXEC_PLAN", `exec ${cmd.map(shq).join(" ")}`)
+  writeFileSync(file, lines.join("\n") + "\n", { mode: 0o600 })
+}
+
 async function run(cmd: string[], env: Record<string, string>, cwd = process.cwd()): Promise<number> {
+  const plan = process.env.CODER_EXEC_PLAN
+  if (plan && process.platform !== "win32" && cwd === process.cwd()) {
+    writeExecPlan(plan, cmd, env)
+    return 0
+  }
   const proc = Bun.spawn(cmd, { cwd, env: { ...process.env, ...env }, stdin: "inherit", stdout: "inherit", stderr: "inherit" })
   return await proc.exited
 }
