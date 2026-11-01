@@ -1,0 +1,22 @@
+// Model servers shared by the whole team (committed). NEVER put API keys here.
+//
+// Easiest way to add one: run `coder connect <url> --name <id>`, check it works,
+// then `coder connect --share <id>` prints the entry to paste below.
+// Each colleague then stores their own key once with `coder key <id>`.
+//
+// "{secret:<id>}" is replaced with the key from that person's Coder secrets.
+{
+  "providers": {
+    // "company": {
+    //   "name": "Company GPU server",
+    //   "package": "@opencode/ai/providers/openai-compatible",
+    //   "settings": { "baseURL": "https://llm.yourco.internal/v1", "apiKey": "{secret:company}" },
+    //   "models": {
+    //     "deepseek-v4-flash": { "limit": { "context": 131072, "output": 32768 }, "capabilities": { "tools": true, "input": ["text"] } }
+    //   }
+    // }
+  },
+
+  // Default model for everyone, as "provider/model". A personal default from `coder connect` wins.
+  "model": null
+}

@@ -159,3 +159,18 @@ describe("probe", () => {
     expect(r.notes.join(" ")).toContain("No chat endpoint")
   })
 })
+
+describe("probe with auth-first gateways", () => {
+  test("a 401 on an unknown route is not mistaken for a supported API", async () => {
+    const key = "sk-x"
+    const url = mock({
+      "GET /v1/models": (req) =>
+        req.headers.get("authorization") === `Bearer ${key}` ? json({ data: [{ id: "m", owned_by: "openai" }] }) : json({}, 401),
+      "POST /v1/chat/completions": (req) => (req.headers.get("authorization") === `Bearer ${key}` ? json({}, 400) : json({}, 401)),
+      // Anthropic route doesn't exist, but the gateway still answers 401 for bad auth schemes.
+      "POST /v1/messages": () => json({ error: "unauthorized" }, 401),
+    })
+    const r = await probe(url, { apiKey: key })
+    expect(r.formats).toEqual(["openai-chat"])
+  })
+})

@@ -1,0 +1,37 @@
+// Team-wide Coder settings (committed). Personal overrides go in coder.jsonc in
+// your Coder home folder, which `coder doctor` prints. Same shape as this file.
+{
+  "sandbox": {
+    // "auto"     = "required" on macOS/Linux, "ask" on Windows (until Windows sandboxing leaves alpha)
+    // "required" = shell commands and local MCP servers run in the OS sandbox;
+    //              if the sandbox can't start, they don't run at all
+    // "ask"      = no sandbox, but every shell command needs approval
+    // "off"      = no sandbox (not recommended)
+    "mode": "auto",
+
+    // Hosts that shell commands may reach (internal package mirror, git server…).
+    // Empty = no network for commands. Model servers don't need to be listed here.
+    "allowedDomains": [],
+
+    // Extra folders commands may write to, besides the project, the temp folder and ~/.cache.
+    "allowWrite": [],
+
+    // Extra secret files or folders to hide from commands (credentials are hidden already).
+    "denyRead": []
+  },
+
+  // Web access for the agent. Off by default: fetched pages are the main source of prompt injection.
+  "web": { "fetch": false, "search": false },
+
+  // Limits for files loaded into every session.
+  "memory": { "maxChars": 4000 },
+  "knowledge": { "indexMaxChars": 12000 },
+
+  // Network allowlist per local MCP server (they run in the sandbox too). Example:
+  // "mcp": { "jira": { "allowedDomains": ["jira.yourco.internal"] } }
+  "mcp": {},
+
+  // Merged into OpenCode's configuration: MCP servers, agents, extra permission rules, formatter…
+  // See https://opencode.ai/docs/config. Security rules from Coder always win.
+  "opencode": {}
+}

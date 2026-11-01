@@ -1,0 +1,70 @@
+#!/bin/sh
+# Coder launcher for macOS and Linux.  Usage: ./coder [command]   (./coder help)
+# Uses Bun 1.4.4. If it isn't installed, downloads the official release and checks
+# its SHA-256 against the value below before running it. Nothing is piped into a shell.
+set -eu
+
+BUN_VERSION=1.4.4
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+LOCAL_BUN="$ROOT/.coder/bun/bun"
+
+die() { echo "coder: $*" >&2; exit 1; }
+
+bun_ok() { [ -x "$1" ] && [ "$("$1" --version 2>/dev/null || true)" = "$BUN_VERSION" ]; }
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | cut -d' ' -f1
+  else die "need sha256sum or shasum to verify downloads"; fi
+}
+
+install_bun() {
+  os=$(uname -s); arch=$(uname -m)
+  case "$os-$arch" in
+    Darwin-arm64)  target=darwin-aarch64;  sum=c240d7f0ccb90c263a849fcdb09b7ee62630d921348ed6aafda86b9d577bc510 ;;
+    Darwin-x86_64)
+      if sysctl -n machdep.cpu.leaf7_features 2>/dev/null | grep -q AVX2; then
+        target=darwin-x64;          sum=50a3491f73abc2fe81673171a85762d3bc2cc1680ccecadd983de99adf77977e
+      else
+        target=darwin-x64-baseline; sum=d4a155adfbfd09155eb3ba05c9e3a544f39297d7a68616d3c7759f67ab5c47dc
+      fi ;;
+    Linux-x86_64)
+      musl=""; [ -e /lib/ld-musl-x86_64.so.1 ] && musl=1
+      avx2=""; grep -q avx2 /proc/cpuinfo 2>/dev/null && avx2=1
+      case "$musl$avx2" in
+        11) target=linux-x64-musl;          sum=a5a8ccc5e74dcb883fe974f125a7bdb3b41e5195ed1b870e73f17effd3eb2b2d ;;
+        1)  target=linux-x64-musl-baseline; sum=6e9c37098b293920aed28bfb51ab240e26d23bfdd9bbfecb3ad428ac166549bc ;;
+        *)
+          if [ -n "$avx2" ]; then target=linux-x64; sum=bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c
+          else target=linux-x64-baseline; sum=e0446eb55995772eb9894bebae9a6be368d985a8b9271ee124486f9946eedd76; fi ;;
+      esac ;;
+    Linux-aarch64|Linux-arm64)
+      if [ -e /lib/ld-musl-aarch64.so.1 ]; then target=linux-aarch64-musl; sum=57f01b02ac7113c61c935f28f38c2eab849e3c970dab21f8b640a87b1ef65009
+      else target=linux-aarch64; sum=baa6bb36f51d6e58561e02bbea825038a9df454f673d6d776e8bbf86f8c7850e; fi ;;
+    *) die "unsupported platform $os-$arch" ;;
+  esac
+  url="https://github.com/oven-sh/bun/releases/download/bun-v$BUN_VERSION/bun-$target.zip"
+  tmp="$ROOT/.coder/bun.tmp"
+  rm -rf "$tmp"; mkdir -p "$tmp"
+  echo "Downloading Bun $BUN_VERSION ($target)…" >&2
+  if command -v curl >/dev/null 2>&1; then curl -fsSL -o "$tmp/bun.zip" "$url"
+  elif command -v wget >/dev/null 2>&1; then wget -q -O "$tmp/bun.zip" "$url"
+  else die "need curl or wget to download Bun (or install Bun $BUN_VERSION yourself)"; fi
+  [ "$(sha256 "$tmp/bun.zip")" = "$sum" ] || { rm -rf "$tmp"; die "checksum mismatch for $url, refusing to use it"; }
+  if command -v unzip >/dev/null 2>&1; then unzip -q "$tmp/bun.zip" -d "$tmp"
+  elif command -v python3 >/dev/null 2>&1; then python3 -I -m zipfile -e "$tmp/bun.zip" "$tmp"
+  elif command -v bsdtar >/dev/null 2>&1; then bsdtar -xf "$tmp/bun.zip" -C "$tmp"
+  else rm -rf "$tmp"; die "need unzip or python3 to unpack Bun"; fi
+  mkdir -p "$ROOT/.coder/bun"
+  mv "$tmp/bun-$target/bun" "$LOCAL_BUN"
+  chmod 755 "$LOCAL_BUN"
+  rm -rf "$tmp"
+}
+
+BUN=""
+for candidate in "$LOCAL_BUN" "$(command -v bun 2>/dev/null || true)" "$HOME/.bun/bin/bun"; do
+  if [ -n "$candidate" ] && bun_ok "$candidate"; then BUN=$candidate; break; fi
+done
+if [ -z "$BUN" ]; then install_bun; BUN=$LOCAL_BUN; fi
+
+exec "$BUN" "$ROOT/src/cli.ts" "$@"

@@ -1,0 +1,42 @@
+{
+  "name": "coder-vscode",
+  "displayName": "Coder",
+  "description": "Coder (secure, local-first coding agent on your own models) inside VS Code. Works locally and over Remote-SSH.",
+  "version": "0.1.0",
+  "publisher": "coder-local",
+  "license": "MIT",
+  "private": true,
+  "engines": { "vscode": "^1.95.0" },
+  "categories": ["AI", "Other"],
+  "extensionKind": ["workspace"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      { "command": "coder.open", "title": "Coder: Open", "icon": "$(sparkle)" },
+      { "command": "coder.openNew", "title": "Coder: Open in a New Tab" },
+      { "command": "coder.addFile", "title": "Coder: Add File or Selection to Chat" },
+      { "command": "coder.connect", "title": "Coder: Connect a Model Server" },
+      { "command": "coder.doctor", "title": "Coder: Check Setup (Doctor)" }
+    ],
+    "keybindings": [
+      { "command": "coder.open", "key": "ctrl+escape", "mac": "cmd+escape" },
+      { "command": "coder.openNew", "key": "ctrl+shift+escape", "mac": "cmd+shift+escape" },
+      { "command": "coder.addFile", "key": "ctrl+alt+k", "mac": "cmd+alt+k", "when": "editorTextFocus" }
+    ],
+    "menus": {
+      "editor/title": [{ "command": "coder.open", "group": "navigation" }],
+      "explorer/context": [{ "command": "coder.addFile", "group": "coder" }]
+    },
+    "configuration": {
+      "title": "Coder",
+      "properties": {
+        "coder.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `coder` launcher in your Coder checkout (on Windows `coder.cmd`). Leave empty to use the checkout this extension was installed from, then `~/Coder`."
+        }
+      }
+    }
+  }
+}

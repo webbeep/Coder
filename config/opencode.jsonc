@@ -1,0 +1,35 @@
+// Coder's baseline OpenCode configuration (committed). Coder adds paths, plugins
+// and your model servers at launch, then layers its security rules on top.
+{
+  // Never self-update: the version is pinned in upstream.json and changes by PR.
+  "update": "disable",
+  "share": "disabled",
+  "snapshots": true,
+
+  // Rules are evaluated in order; the last matching rule wins.
+  "permissions": [
+    // Anything not listed below needs approval.
+    { "action": "*", "resource": "*", "effect": "ask" },
+
+    // Looking around is free.
+    { "action": "read", "resource": "*", "effect": "allow" },
+    { "action": "glob", "resource": "*", "effect": "allow" },
+    { "action": "grep", "resource": "*", "effect": "allow" },
+    { "action": "todowrite", "resource": "*", "effect": "allow" },
+    { "action": "question", "resource": "*", "effect": "allow" },
+    { "action": "skill", "resource": "*", "effect": "allow" },
+    { "action": "subagent", "resource": "*", "effect": "allow" },
+
+    // Changing files and running commands need approval (you can allow "always" per session).
+    { "action": "edit", "resource": "*", "effect": "ask" },
+    { "action": "shell", "resource": "*", "effect": "ask" },
+
+    // Read-only git and listing commands are fine (they run in the sandbox anyway).
+    { "action": "shell", "resource": "git status*", "effect": "allow" },
+    { "action": "shell", "resource": "git diff*", "effect": "allow" },
+    { "action": "shell", "resource": "git log*", "effect": "allow" },
+    { "action": "shell", "resource": "git show*", "effect": "allow" },
+    { "action": "shell", "resource": "ls*", "effect": "allow" },
+    { "action": "shell", "resource": "pwd", "effect": "allow" }
+  ]
+}

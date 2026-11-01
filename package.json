@@ -2,7 +2,7 @@
   "name": "coder",
   "version": "0.1.0",
   "private": true,
-  "description": "Secure, local-first coding agent for teams — a hardened OpenCode distribution",
+  "description": "Secure, local-first coding agent for teams \u2014 a hardened OpenCode distribution",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -10,5 +10,13 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit -p ."
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "typescript": "5.9.3",
+    "@types/vscode": "1.95.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "0.0.81"
+  },
+  "trustedDependencies": []
 }

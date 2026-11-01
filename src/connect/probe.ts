@@ -143,8 +143,10 @@ export async function probe(input: string, opts: ProbeOptions = {}): Promise<Pro
 
   // A real endpoint rejects "{}" with 400/401/422 (some, like llama.cpp, with a JSON 500).
   // A missing one gives 404/405, a redirect, or a non-JSON error page.
+  // Gateways often check auth before routing, so with a key a 401/403 proves nothing about the route.
   const exists = (h: Hit) => {
     if (h.status === 0 || h.status === 404 || h.status === 405) return false
+    if (h.status === 401 || h.status === 403) return !opts.apiKey
     if (h.status >= 300 && h.status < 400) return false
     if (h.status >= 500) return h.json !== undefined && h.status !== 502 && h.status !== 503 && h.status !== 504
     return true
@@ -248,7 +250,7 @@ export async function probe(input: string, opts: ProbeOptions = {}): Promise<Pro
           baseURL["openai-responses"] = base
         }
       }),
-      post("/v1/messages", anthropicHeaders).then((h) => {
+      post("/v1/messages", { ...bearer, ...anthropicHeaders }).then((h) => {
         if (exists(h)) {
           formats.push("anthropic")
           baseURL.anthropic = root + "/v1"
