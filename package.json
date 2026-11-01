@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "coder": "bun run src/cli.ts",
-    "test": "bun test",
+    "test": "bun test ./test",
     "typecheck": "tsc --noEmit -p ."
   },
   "devDependencies": {

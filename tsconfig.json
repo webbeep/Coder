@@ -6,10 +6,21 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["bun"],
+    "types": [
+      "bun"
+    ],
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src", "test", "plugins", "vscode/src"]
+  "include": [
+    "src",
+    "test",
+    "plugins",
+    "vscode/src"
+  ],
+  "exclude": [
+    "plugins/coder-editor",
+    "node_modules"
+  ]
 }

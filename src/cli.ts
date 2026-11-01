@@ -10,6 +10,7 @@ import { ensureOpencode, readUpstream } from "./upstream"
 import { detectSandbox } from "./sandbox-status"
 import { loadSettings } from "./settings"
 import { vscodeCommand } from "./vscode"
+import { editorCommand } from "./editor"
 import { parseArgs, str } from "./args"
 
 const HELP = `${bold("Coder")} — secure, local-first coding agent (OpenCode ${readUpstream().opencode.version}, hardened)
@@ -25,6 +26,7 @@ Usage: ./coder [command] [args]
   serve [--port N]       Headless server on this machine (127.0.0.1 only)
   remote <user@host>     Open Coder on a Linux server over SSH  (on the server: remote install)
   vscode                 Build and install the VS Code extension
+  editor build           Rebuild the desktop code editor (after editing its languages.json)
   trust [dir]            Let a reviewed project load its own opencode.json/.opencode
   mcp approve <server>   Re-approve an MCP server whose tools changed
   opencode <args…>       Run any OpenCode command with Coder's configuration
@@ -82,6 +84,8 @@ async function main(argv: string[]): Promise<number> {
       return remoteCommand(rest)
     case "vscode":
       return vscodeCommand(rest)
+    case "editor":
+      return editorCommand(rest)
     case "trust":
       return trustCommand(rest)
     case "mcp":

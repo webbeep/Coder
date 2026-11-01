@@ -1,0 +1,15 @@
+{
+  "$comment": "Syntax highlighting for languages CodeMirror doesn't know, e.g. your proprietary language. Rebuild with ./coder editor build after editing.",
+  "languages": [
+    {
+      "name": "Example",
+      "extensions": [".example"],
+      "keywords": ["module", "import", "func", "return", "if", "else", "while", "for", "let", "const"],
+      "types": ["int", "float", "string", "bool"],
+      "builtins": ["print", "len"],
+      "lineComment": "//",
+      "blockComment": ["/*", "*/"],
+      "strings": ["\"", "'"]
+    }
+  ]
+}
