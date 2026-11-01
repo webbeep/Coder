@@ -13,7 +13,7 @@ import { parseJsonc } from "./jsonc"
 import { coderHome, paths } from "./paths"
 import type { SandboxStatus } from "./sandbox-status"
 import { type CoderSettings, merge } from "./settings"
-import { hasSecret, readJsoncFile, readUserProviders, secretPath, writeJson } from "./store"
+import { fileRef, hasSecret, readJsoncFile, readUserProviders, secretPath, writeJson } from "./store"
 
 export interface Composed {
   configDir: string
@@ -34,7 +34,7 @@ export function resolveSecrets(providers: Record<string, ProviderEntry>, warning
     for (const [k, v] of Object.entries(settings)) {
       const m = typeof v === "string" ? SECRET_REF.exec(v) : null
       if (!m) continue
-      if (hasSecret(m[1]!)) settings[k] = `{file:${secretPath(m[1]!)}}`
+      if (hasSecret(m[1]!)) settings[k] = fileRef(secretPath(m[1]!))
       else {
         delete settings[k]
         warnings.push(`No key stored for "${m[1]}". Run: ./coder key ${m[1]}`)

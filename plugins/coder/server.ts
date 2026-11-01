@@ -236,8 +236,10 @@ export default {
         const file = join(runDir, "mcp", `${name.replace(/[^A-Za-z0-9_-]/g, "_")}.json`)
         mkdirSync(dirname(file), { recursive: true })
         writeFileSync(file, JSON.stringify(mcpSettings(srtBase, sb.mcp[name]?.allowedDomains ?? []), null, 2))
+        // Model API keys stay out of MCP servers too (`env -u` drops them inside the sandbox).
+        const unset = o.stripEnv.flatMap((v) => ["-u", v])
         editor.update(name, (c) => {
-          c.command = [sb.runtime, sb.srtCli, "--settings", file, "--", ...command]
+          c.command = [sb.runtime, sb.srtCli, "--settings", file, "--", ...(unset.length ? ["env", ...unset] : []), ...command]
         })
       }
     })

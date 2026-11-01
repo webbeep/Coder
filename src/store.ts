@@ -63,5 +63,10 @@ export function hasSecret(name: string): boolean {
 
 /** The config reference OpenCode resolves at load time, so keys never sit in config files. */
 export function secretRef(name: string): string {
-  return `{file:${secretPath(name)}}`
+  return fileRef(secretPath(name))
+}
+
+/** OpenCode substitutes {file:…} in raw config text: forward slashes avoid escaping issues on Windows. */
+export function fileRef(path: string): string {
+  return `{file:${path.replace(/\\/g, "/")}}`
 }

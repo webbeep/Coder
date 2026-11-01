@@ -17,7 +17,8 @@
     "src",
     "test",
     "plugins",
-    "vscode/src"
+    "vscode/src",
+    "scripts"
   ],
   "exclude": [
     "plugins/coder-editor",

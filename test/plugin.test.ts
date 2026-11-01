@@ -173,7 +173,7 @@ describe("MCP", () => {
     transforms[0]!(editor)
     transforms[0]!(editor)
     expect(configs.fetcher.command.slice(0, 3)).toEqual(["/usr/bin/node", "/opt/srt/dist/cli.js", "--settings"])
-    expect(configs.fetcher.command.slice(4)).toEqual(["--", "npx", "-y", "mcp-fetch"])
+    expect(configs.fetcher.command.slice(4)).toEqual(["--", "env", "-u", "CODER_COMPANY_KEY", "npx", "-y", "mcp-fetch"])
     const settings = JSON.parse(readFileSync(configs.fetcher.command[3], "utf8"))
     expect(settings.network.allowedDomains).toEqual(["git.corp.internal", "api.example.com"])
     expect(configs.remote).toEqual({ type: "remote", url: "https://mcp.example.com" })
