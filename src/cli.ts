@@ -12,6 +12,7 @@ import { loadSettings } from "./settings"
 import { vscodeCommand } from "./vscode"
 import { editorCommand } from "./editor"
 import { pluginCommand, skillCommand, toolCommand } from "./extend"
+import { evalCommand } from "./eval"
 import { parseArgs, str } from "./args"
 
 const HELP = `${bold("Coder")} — secure, local-first coding agent (OpenCode ${readUpstream().opencode.version}, hardened)
@@ -36,6 +37,7 @@ Extend (skills, MCP servers, plugins and tools from anywhere):
   mcp approve <server>         Re-approve an MCP server whose tools changed
   plugin add <name@x.y.z>      Add an OpenCode plugin (pinned; not sandboxed, so review it)
   tool new <name>              Scaffold a custom tool
+  eval [--model p/m]     Benchmark: run evals/tasks with hidden tests; eval compare shows changes
   opencode <args…>       Run any OpenCode command with Coder's configuration
 
 Files: settings ${dim("config/coder.jsonc")}, team models ${dim("config/models.jsonc")}, knowledge ${dim("knowledge/")}
@@ -105,6 +107,8 @@ async function main(argv: string[]): Promise<number> {
       return pluginCommand(rest)
     case "tool":
       return toolCommand(rest)
+    case "eval":
+      return evalCommand(rest)
     case "opencode":
       return passthrough(rest)
     default:

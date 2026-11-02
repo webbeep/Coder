@@ -162,31 +162,113 @@ There are three ways to work on a remote Linux server.
 `./coder serve` starts a headless server on `127.0.0.1` only. Reach it through an SSH tunnel; it
 refuses other addresses unless you pass `--allow-network`.
 
-## 6. MCP servers and other connectors
+## 6. Skills, MCP servers, plugins and tools
 
-Add MCP servers in [config/coder.jsonc](../config/coder.jsonc) (for the team) or in your personal
-`coder.jsonc`:
+### Skills
+
+Skills use the open `SKILL.md` format shared by Claude Code, Codex, OpenCode, Gemini CLI, Hermes
+and Pi. Import them from a folder, a git repo or a Claude Code plugin:
+
+```sh
+./coder skill add https://github.com/anthropics/skills          # every SKILL.md found in the repo
+./coder skill add https://github.com/org/repo#path/to/skills    # one folder of a repo
+./coder skill add ./team-skills --team                           # into skills/ in this repo (share by PR)
+./coder skill list
+./coder skill remove pdf
+```
+
+- **Personal skills** go to `<personal folder>/skills`.
+- **Team skills** go to [skills/](../skills).
+- **Every file is scanned.** A skill with AI-directed instructions, hidden characters or secrets is
+  refused until you've reviewed it and pass `--force`.
+- **Bundled scripts** run through the shell tool, so they're sandboxed.
+
+### MCP servers
+
+```sh
+./coder mcp add jira --allow jira.yourco.internal -- npx -y @yourco/jira-mcp     # local (stdio) server
+./coder mcp add docs --url https://mcp.yourco.internal/docs --header "Authorization=Bearer {env:DOCS_TOKEN}"
+./coder mcp import ~/.cursor/mcp.json          # also claude_desktop_config.json, .mcp.json, .vscode/mcp.json, opencode.json
+./coder mcp list
+./coder mcp remove jira
+```
+
+What happens on import:
+- Literal tokens in `env` and `headers` (any name containing key, token, secret, password or auth)
+  are moved to private key files, and the config references them.
+- `${env:X}` placeholders become `{env:X}`.
+- Local servers run in the sandbox with **no network** until you allow their hosts with `--allow`.
+- MCP tools ask before running.
+- Each tool's definition is pinned the first time it's used. If it changes later, the tool is
+  disabled until you review it and run `./coder mcp approve <server>`.
+
+For servers the whole team should get, put them in [config/coder.jsonc](../config/coder.jsonc)
+instead (and never put tokens there):
 
 ```jsonc
 {
-  "opencode": {
-    "mcp": {
-      "servers": {
-        "jira": { "type": "local", "command": ["npx", "-y", "@yourco/jira-mcp"], "environment": { "JIRA_URL": "https://jira.yourco.internal" } },
-        "docs": { "type": "remote", "url": "https://mcp.yourco.internal/docs" }
-      }
-    }
-  },
-  // Local MCP servers run in the sandbox. Allow the hosts each one needs:
+  "opencode": { "mcp": { "servers": { "jira": { "type": "local", "command": ["npx", "-y", "@yourco/jira-mcp"] } } } },
   "mcp": { "jira": { "allowedDomains": ["jira.yourco.internal"] } }
 }
 ```
 
-MCP tools need approval by default. Coder pins each tool's definition the first time it sees it.
-If a server later changes a definition, the tool is disabled until you review it and run
-`./coder mcp approve <server>`.
+### OpenCode plugins and custom tools
 
-## 7. Troubleshooting
+```sh
+./coder plugin add some-opencode-plugin@1.4.2   # an exact version is required
+./coder plugin add ./my-plugin                  # a local folder
+./coder tool new word-count                     # creates <personal folder>/plugins/word-count/server.ts
+```
+
+Plugins and custom tools run **inside Coder's server with your permissions, outside the sandbox**,
+which is why Coder asks for confirmation and an exact version. For anything that talks to other
+systems, prefer an MCP server: those run in the sandbox. The agent can't edit plugins in your
+personal folder.
+
+## 7. Benchmarks: measure, don't guess
+
+```sh
+./coder eval                                  # all tasks, default model
+./coder eval --model local/qwen3.8-27b        # another model
+./coder eval --tag acmelang --runs 3          # a subset, three times each (models vary)
+./coder eval compare                          # the last two runs, task by task
+```
+
+### How a task runs
+
+1. Each task in [evals/tasks](../evals/tasks) starts from a fresh copy of its `workspace/`.
+2. The agent works headless. It may edit and run commands without asking, so evals require the
+   sandbox, unless you run them on a throwaway machine with `--allow-unsandboxed`.
+3. Only afterwards are the hidden `tests/` copied in and the check run.
+
+### What gets recorded
+
+The pass rate, seconds, tool calls (from Coder's audit log), tokens (when OpenCode reports them),
+and two integrity flags:
+- **edited tests:** the agent changed a test it was asked to make pass;
+- **followed injection:** the agent obeyed instructions hidden in the repo.
+
+### Results
+
+Results are saved in `evals/results/`, git-ignored by default. To commit a baseline, use
+`git add -f evals/results/<file>`.
+
+A run is compared with the previous one for the same model, and a drop in pass rate is flagged.
+Use runs to:
+- choose a model or quantization;
+- check a knowledge-base change;
+- vet an OpenCode upgrade before merging it.
+
+### Your own tasks
+
+Copy [evals/tasks/_template](../evals/tasks/_template) and write tasks in your proprietary
+language, with its compiler or test runner as the `check` command. A few dozen real tasks tell you
+more than any public leaderboard.
+
+CI checks that every starter task is solvable (reference solutions in `test/eval.test.ts`). It also
+runs the smoke task through the real OpenCode binary on every push.
+
+## 8. Troubleshooting
 
 | Symptom | Fix |
 |---|---|

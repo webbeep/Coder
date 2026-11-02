@@ -1,0 +1,15 @@
+{
+  "prompt": "Write count_lines.sh: given a directory as its first argument, print the total number of non-empty lines across all .txt files in it, including subdirectories. Print only the number.",
+  "check": [
+    "bash",
+    "hidden/check.sh"
+  ],
+  "requires": [
+    "bash"
+  ],
+  "tags": [
+    "shell",
+    "feature"
+  ],
+  "timeoutSec": 300
+}

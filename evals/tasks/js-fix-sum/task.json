@@ -1,0 +1,19 @@
+{
+  "prompt": "Users report that sum([5, -2]) in sum.js returns 5. Find and fix the bug in sum().",
+  "check": [
+    "{bun}",
+    "test",
+    "./hidden"
+  ],
+  "requires": [
+    "bun"
+  ],
+  "tags": [
+    "javascript",
+    "bugfix"
+  ],
+  "unchanged": [
+    "sum.test.js"
+  ],
+  "timeoutSec": 300
+}

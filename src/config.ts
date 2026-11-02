@@ -75,7 +75,14 @@ export function buildPolicy(settings: CoderSettings, home: string): Record<strin
   return { permissions: rules }
 }
 
-export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus; cwd: string; allowSelfEdit?: boolean }): Composed {
+export function compose(opts: {
+  settings: CoderSettings
+  sandbox: SandboxStatus
+  cwd: string
+  allowSelfEdit?: boolean
+  /** Benchmark runs: edits and commands proceed without approval (sandbox and hard denies still apply). */
+  eval?: boolean
+}): Composed {
   const { settings, sandbox } = opts
   const warnings: string[] = []
   const home = coderHome()
@@ -143,6 +150,12 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
       ...personalSkills.map((d) => ({ action: "external_directory", resource: `${slash(d)}/*`, effect: "allow" })),
     ],
   })
+  if (opts.eval)
+    config.permissions = [
+      ...config.permissions,
+      { action: "edit", resource: "*", effect: "allow" },
+      { action: "shell", resource: "*", effect: "allow" },
+    ]
   if (model) {
     config.model = model
     // Titles and summaries use the same server, never a hosted default.
@@ -150,7 +163,8 @@ export function compose(opts: { settings: CoderSettings; sandbox: SandboxStatus;
   }
 
   // Per user and per checkout (tests and multiple checkouts never overwrite each other's config).
-  const configDir = join(home, "run", `config-${createHash("sha256").update(paths.root).digest("hex").slice(0, 10)}`)
+  // Eval runs get their own folder: their auto-approve rules must never reach a normal session.
+  const configDir = join(home, "run", `config-${createHash("sha256").update(paths.root).digest("hex").slice(0, 10)}${opts.eval ? "-eval" : ""}`)
   writeJson(join(configDir, "opencode.json"), config, 0o600)
 
   const policy = buildPolicy(settings, home)

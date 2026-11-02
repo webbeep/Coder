@@ -37,8 +37,54 @@ verifies their checksums. Nothing else needs to be installed.
 | **Desktop app with an editor** | The OpenCode desktop app (pinned build, checksum-verified), plus Coder's code editor panel (`Ctrl/Cmd+Shift+E`). |
 | **VS Code** | The extension opens Coder beside your editor and sends `@file#L10-20` references. It also works over Remote-SSH. |
 | **Remote Linux servers** | `coder remote user@host` runs Coder on the server over SSH. `coder remote install` on the server lets the desktop app's *Add server → SSH* use Coder there. |
-| **MCP and connectors** | Configure MCP servers under `opencode.mcp` in [config/coder.jsonc](config/coder.jsonc). Local servers run sandboxed, and tool definitions are pinned on first use. |
+| **MCP, skills, plugins, tools** | Import them from anywhere. See [below](#bring-your-own-skills-mcp-servers-plugins-and-tools). |
 | **Memory** | A short personal `MEMORY.md` per person. Writes are size-capped and scanned for injected instructions and secrets. |
+
+## Bring your own skills, MCP servers, plugins and tools
+
+```sh
+./coder skill add https://github.com/anthropics/skills       # any SKILL.md: Claude Code, Codex, OpenCode, Hermes, Pi…
+./coder skill add ./my-skills --team                          # into the repo's skills/ (share by PR)
+./coder mcp import ~/Library/Application\ Support/Claude/claude_desktop_config.json   # or .mcp.json, .vscode/mcp.json, opencode.json
+./coder mcp add jira --allow jira.yourco.internal -- npx -y @yourco/jira-mcp
+./coder mcp add docs --url https://mcp.yourco.internal/docs
+./coder plugin add some-opencode-plugin@1.4.2                 # pinned; plugins are not sandboxed, so review them
+./coder tool new word-count                                   # scaffold a custom tool
+```
+
+Every imported file is scanned. Skills with injected instructions are refused unless you pass
+`--force` after reviewing them. Literal tokens in MCP configs move into private key files. Local MCP
+servers run in the sandbox with a per-server network allowlist. Each MCP tool's definition is
+pinned the first time it's used.
+
+## Quality, benchmarks and resource use
+
+**Benchmark you own.** `./coder eval --model company/deepseek-v4-flash` runs the tasks in
+[evals/tasks](evals/tasks) headless. Each task's result is checked with **hidden tests** the agent
+never sees. Coder records the pass rate, time, tool calls and tokens, and compares each run with
+your last one for the same model, flagging regressions. `./coder eval compare` shows the differences.
+
+Two **integrity canaries** fail a task if the agent:
+- edits the visible tests it was asked to make pass;
+- follows prompt-injection instructions hidden in a README.
+
+Add tasks in your proprietary language from [evals/tasks/_template](evals/tasks/_template), and use
+them to choose a model, check a knowledge change, or vet an OpenCode upgrade.
+
+**Measured in CI on every push.** These come from the real OpenCode run against a mock model
+(OpenCode 2.2.5, November 2026). CI fails if a budget in
+[test/e2e/budgets.json](test/e2e/budgets.json) is exceeded.
+
+| | Linux | macOS | Windows | Budget |
+|---|---|---|---|---|
+| Context Coder + OpenCode put in front of the model (system prompt, tools, knowledge index, memory) | ~5.6k tokens | ~5.7k tokens | ~5.7k tokens | 8k |
+| Peak RAM, all OpenCode processes (CLI + server) | 390 MB | 396 MB | not measured | 600 MB |
+| Start to answer | 1.4 s | 0.9 s | 2.4 s | 30 s |
+
+Coder's own footprint:
+- On macOS and Linux the launcher hands its process over to OpenCode, so it holds 0 MB while you work.
+- The guardrails plugin runs in OpenCode's process and only does in-memory checks per tool call.
+- The desktop editor bundle is 1.0 MB (367 KB gzipped).
 
 ## Security in one table
 
@@ -65,6 +111,7 @@ config/                       team settings: coder.jsonc, models.jsonc, opencode
 plugins/coder/                guardrails plugin (sandbox, path policy, scanning, MCP pinning, audit)
 plugins/coder-editor/         desktop code editor panel (CodeMirror 6)
 knowledge/                    team knowledge base (markdown), INDEX.md is loaded every session
+evals/                        benchmark tasks with hidden tests, canaries, results
 skills/                       team skills (SKILL.md); share new ones by PR
 vscode/                       VS Code extension
 src/                          the Coder CLI (Bun + TypeScript)
@@ -81,8 +128,8 @@ docs/                         guide, security, upgrading, research, plan
 ## Development
 
 ```sh
-bun install && bun run test && bun run typecheck     # unit tests (42) and types
-bun test/e2e/run.ts                                   # end to end with the real OpenCode and a mock model server
+bun install && bun run test && bun run typecheck     # unit tests (65) and types; includes every benchmark task's reference solution
+bun test/e2e/run.ts                                   # real OpenCode + mock model: agent run, budgets, eval smoke task
 ./coder editor build --check                          # desktop editor bundle matches its sources
 ```
 

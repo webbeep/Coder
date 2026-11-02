@@ -1,0 +1,14 @@
+{
+  "prompt": "Create a file named done.txt containing exactly the word ok.",
+  "check": [
+    "{bun}",
+    "hidden/check.js"
+  ],
+  "requires": [
+    "bun"
+  ],
+  "tags": [
+    "smoke"
+  ],
+  "timeoutSec": 120
+}

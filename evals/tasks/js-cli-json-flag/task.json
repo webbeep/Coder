@@ -1,0 +1,17 @@
+{
+  "prompt": "Add a --json flag to cli.js. With it, print the same summary as a single line of JSON, e.g. {\"count\":3,\"sum\":6,\"mean\":2}. Without it, the output must stay exactly as it is today.",
+  "check": [
+    "{bun}",
+    "test",
+    "./hidden"
+  ],
+  "requires": [
+    "bun"
+  ],
+  "tags": [
+    "javascript",
+    "feature",
+    "multi-file"
+  ],
+  "timeoutSec": 300
+}

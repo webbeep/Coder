@@ -58,26 +58,38 @@ const server = Bun.serve({
     const stream = body.stream === true
     const tools: string[] = (body.tools ?? []).map((t: any) => t?.function?.name)
     if (!tools.length) return text("E2E title", stream)
+    // The eval smoke task: "Create a file named done.txt containing exactly the word ok."
+    const userText = (body.messages ?? [])
+      .filter((m: any) => m.role === "user")
+      .map((m: any) => (typeof m.content === "string" ? m.content : JSON.stringify(m.content)))
+      .join(" ")
+    if (userText.includes("done.txt")) {
+      if ((body.messages ?? []).some((m: any) => m.role === "tool")) return text("Done.", stream)
+      return toolCall("write", JSON.stringify({ path: "done.txt", content: "ok" }), stream)
+    }
     if (!tools.includes("read")) return text(`E2E_NO_READ_TOOL tools=${tools.join(",")}`, stream)
     const toolResult = (body.messages ?? []).find((m: any) => m.role === "tool")
     if (toolResult) {
       const content = typeof toolResult.content === "string" ? toolResult.content : JSON.stringify(toolResult.content)
       return text(`E2E_OK ${content.includes("hello from e2e") ? "saw-file" : "missing-file"}`, stream)
     }
-    const args = JSON.stringify({ path: "hello.txt" })
-    if (!stream)
-      return Response.json({
-        id: "e2e",
-        object: "chat.completion",
-        choices: [{ index: 0, message: { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: args } }] }, finish_reason: "tool_calls" }],
-      })
-    return sse([
-      chunk({ role: "assistant", tool_calls: [{ index: 0, id: "call_1", type: "function", function: { name: "read", arguments: "" } }] }),
-      chunk({ tool_calls: [{ index: 0, function: { arguments: args } }] }),
-      { ...chunk({}, "tool_calls"), usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } },
-    ])
+    return toolCall("read", JSON.stringify({ path: "hello.txt" }), stream)
   },
 })
+
+function toolCall(name: string, args: string, stream: boolean) {
+  if (!stream)
+    return Response.json({
+      id: "e2e",
+      object: "chat.completion",
+      choices: [{ index: 0, message: { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name, arguments: args } }] }, finish_reason: "tool_calls" }],
+    })
+  return sse([
+    chunk({ role: "assistant", tool_calls: [{ index: 0, id: "call_1", type: "function", function: { name, arguments: "" } }] }),
+    chunk({ tool_calls: [{ index: 0, function: { arguments: args } }] }),
+    { ...chunk({}, "tool_calls"), usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } },
+  ])
+}
 
 // OPENCODE_PRINT_LOGS shows the OpenCode server's own log on stderr, so failures are diagnosable.
 const env = { ...process.env, CODER_HOME: home, NO_COLOR: "1", OPENCODE_PRINT_LOGS: "1" }
@@ -133,6 +145,11 @@ try {
   check(contextTokens > 0 && contextTokens <= budgets.maxContextTokens, `context overhead ~${contextTokens} tokens (budget ${budgets.maxContextTokens})`)
   if (peakKB) check(peakMB <= budgets.maxPeakRssMB, `peak RAM of OpenCode processes ${peakMB} MB (budget ${budgets.maxPeakRssMB})`)
   check(seconds <= budgets.maxRunSeconds, `agent run took ${seconds.toFixed(1)} s (budget ${budgets.maxRunSeconds})`)
+  // The benchmark pipeline itself: coder eval runs the smoke task through the real binary and hidden check.
+  const evalArgs = ["eval", "--tag", "smoke", "--model", "e2e/mock-coder", ...(process.platform === "win32" ? ["--allow-unsandboxed"] : [])]
+  const ev = await coder(evalArgs)
+  check(ev.code === 0 && ev.out.includes("pass rate 100%"), "coder eval: smoke task passed its hidden check")
+
   if (process.env.GITHUB_STEP_SUMMARY) {
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,

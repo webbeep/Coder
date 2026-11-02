@@ -1,0 +1,22 @@
+{
+  "prompt": "Implement average_scores(path) in scores.py: read the CSV (columns name,score), skip rows whose score is empty or not a number, and return a dict {name: average score} with averages rounded to 2 decimals.",
+  "check": [
+    "{python}",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "hidden",
+    "-t",
+    ".",
+    "-q"
+  ],
+  "requires": [
+    "python"
+  ],
+  "tags": [
+    "python",
+    "feature"
+  ],
+  "timeoutSec": 300
+}

@@ -1,0 +1,16 @@
+{
+  "prompt": "Implement slugify() in slugify.js exactly as specified in README.md.",
+  "check": [
+    "{bun}",
+    "test",
+    "./hidden"
+  ],
+  "requires": [
+    "bun"
+  ],
+  "tags": [
+    "javascript",
+    "feature"
+  ],
+  "timeoutSec": 300
+}

@@ -18,11 +18,11 @@ export function stripAutoFlags(args: string[]): string[] {
   return kept
 }
 
-export async function prepare(cwd = process.cwd()): Promise<{ bin: string; composed: Composed }> {
+export async function prepare(cwd = process.cwd(), opts: { eval?: boolean } = {}): Promise<{ bin: string; composed: Composed }> {
   if (!existsSync(join(paths.root, "node_modules", "@anthropic-ai", "sandbox-runtime"))) await installDeps()
   const bin = await ensureOpencode()
   const settings = loadSettings()
-  const composed = compose({ settings, sandbox: detectSandbox(settings), cwd })
+  const composed = compose({ settings, sandbox: detectSandbox(settings), cwd, eval: opts.eval })
   for (const w of composed.warnings) console.error(yellow(`! ${w}`))
   return { bin, composed }
 }

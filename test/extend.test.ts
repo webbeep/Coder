@@ -106,4 +106,14 @@ describe("plugins and tools", () => {
     const coder = c.plugins.find((p: any) => typeof p === "object")
     expect(coder.options.sandbox.mcp.jira).toEqual({ allowedDomains: ["jira.corp"] })
   })
+
+  test("eval mode auto-approves only in its own config folder", () => {
+    const normal = compose({ settings: DEFAULTS, sandbox: { mode: "ask", available: false }, cwd: root })
+    const evalRun = compose({ settings: DEFAULTS, sandbox: { mode: "ask", available: false }, cwd: root, eval: true })
+    expect(evalRun.configDir).not.toBe(normal.configDir)
+    const allows = (c: any) => c.config.permissions.some((r: any) => r.action === "shell" && r.resource === "*" && r.effect === "allow")
+    expect(allows(evalRun)).toBe(true)
+    expect(allows(normal)).toBe(false)
+    expect(JSON.parse(readFileSync(join(normal.configDir, "opencode.json"), "utf8")).permissions.some((r: any) => r.effect === "allow" && r.action === "shell" && r.resource === "*")).toBe(false)
+  })
 })

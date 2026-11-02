@@ -1,0 +1,17 @@
+{
+  "prompt": "Describe the change, as you would to a colleague.",
+  "check": [
+    "acmec",
+    "test",
+    "hidden"
+  ],
+  "requires": [
+    "acmec"
+  ],
+  "tags": [
+    "acmelang"
+  ],
+  "unchanged": [],
+  "forbidden": [],
+  "timeoutSec": 600
+}

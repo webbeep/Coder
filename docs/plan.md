@@ -288,7 +288,10 @@ Each promotion step generalizes the skill, strips personal data, and runs the sa
 | Desktop app (pinned official build, updater blocked) with Coder's code editor panel | **Done** |
 | VS Code extension (local and Remote-SSH) | **Done** |
 | Remote Linux: `coder remote` over SSH, desktop "Add server → SSH" through a Coder shim, `coder serve` on loopback | **Done** |
-| CI on all three OSes, including an end-to-end run of the real OpenCode against a mock model server | **Done** (first CI run pending) |
+| CI on all three OSes, including an end-to-end run of the real OpenCode against a mock model server | **Done**: passing on Windows, macOS and Linux |
+| Resource budgets in CI (context ~5.7k tokens, ~390 MB RAM, ~1–2 s), lean launcher (exec hand-off) | **Done** |
+| Import skills, MCP servers (Claude/Cursor/VS Code/OpenCode formats), plugins; tool scaffold | **Done** |
+| `coder eval` benchmark: hidden tests, integrity canaries, run history and regression flags | **Done** (starter tasks; add your language's tasks) |
 
 **Changes from the original plan:**
 - **No LSP integration.** OpenCode v2 parses `lsp` config but has no language-server runtime, so
@@ -301,7 +304,8 @@ Each promotion step generalizes the skill, strips personal data, and runs the sa
 
 ## 10. Next steps
 
-1. **Run CI once** and fix anything the end-to-end job finds; it is the first run against the real binary.
+1. **Benchmark your models:** run `coder eval` against each candidate model and quantization, then
+   commit the baselines.
 2. **Your language:** paste its docs into a session ("learn these docs"), review the generated
    `knowledge/` files, and add its build and check commands to the cheat sheet.
 3. **Desktop app from source:** a CI workflow that builds the OpenCode desktop app with the updater
@@ -310,5 +314,5 @@ Each promotion step generalizes the skill, strips personal data, and runs the sa
    admin install per machine).
 5. **Safe self-improvement:** a `learn` loop where the agent proposes skill and knowledge changes
    as PRs, gated by an eval set in your language. See §7.
-6. **Evals for your language:** 100–300 tasks with hidden tests. This lets you measure which
-   model, prompt or knowledge changes actually help.
+6. **Evals for your language:** grow `evals/tasks` toward 100–300 tasks with hidden tests. This
+   lets you measure which model, prompt or knowledge changes actually help.
