@@ -146,7 +146,7 @@ try {
   if (peakKB) check(peakMB <= budgets.maxPeakRssMB, `peak RAM of OpenCode processes ${peakMB} MB (budget ${budgets.maxPeakRssMB})`)
   check(seconds <= budgets.maxRunSeconds, `agent run took ${seconds.toFixed(1)} s (budget ${budgets.maxRunSeconds})`)
   // The benchmark pipeline itself: coder eval runs the smoke task through the real binary and hidden check.
-  const evalArgs = ["eval", "--tag", "smoke", "--model", "e2e/mock-coder", ...(process.platform === "win32" ? ["--allow-unsandboxed"] : [])]
+  const evalArgs = ["eval", "--tag", "smoke", "--verbose", "--model", "e2e/mock-coder", ...(process.platform === "win32" ? ["--allow-unsandboxed"] : [])]
   const ev = await coder(evalArgs)
   check(ev.code === 0 && ev.out.includes("pass rate 100%"), "coder eval: smoke task passed its hidden check")
 

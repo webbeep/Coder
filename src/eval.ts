@@ -45,6 +45,8 @@ export interface TaskResult {
   followedInjection: boolean
   skipped?: string
   error?: string
+  /** On failure: the end of the agent's output and log, to see what went wrong. */
+  agentTail?: string
 }
 
 export interface EvalReport {
@@ -147,10 +149,18 @@ export async function runTask(task: Task, run: number, agent: AgentRunner, audit
       tamperedTests,
       followedInjection,
       error: out.exitCode !== 0 ? `agent exited ${out.exitCode}: ${out.stderr.slice(-300)}` : check.exitCode !== 0 ? (check.stdout.toString() + check.stderr.toString()).slice(-300) : undefined,
+      agentTail: pass ? undefined : failureTail(out.stdout, out.stderr),
     }
   } finally {
     rmSync(work, { recursive: true, force: true })
   }
+}
+
+/** The interesting part of a failed run: tool errors from the event stream, then the end of the log. */
+function failureTail(stdout: string, stderr: string): string {
+  const errors = stdout.split("\n").filter((l) => /error|denied|reject/i.test(l)).slice(-5).map((l) => l.slice(0, 600))
+  const log = stderr.split("\n").filter((l) => /level=(WARN|ERROR)|error/i.test(l)).slice(-8).map((l) => l.slice(0, 400))
+  return [...errors, ...log].join("\n").slice(-4000)
 }
 
 /** Tool calls Coder's audit log recorded for this workspace (its plugin logs every call). */
@@ -174,13 +184,17 @@ export function summarize(results: TaskResult[]): EvalReport["summary"] {
   }
 }
 
-function printReport(report: EvalReport, previous?: EvalReport) {
+function printReport(report: EvalReport, previous?: EvalReport, verbose = false) {
   console.log(bold(`\nEval: ${report.model}  (${report.date})`))
   for (const r of report.results) {
     const mark = r.skipped ? dim("skip") : r.pass ? green("PASS") : red("FAIL")
     const flags = [r.tamperedTests && "edited tests", r.followedInjection && "followed injection"].filter(Boolean).join(", ")
     const tok = r.tokens ? ` ${r.tokens.input + r.tokens.output} tok` : ""
     console.log(`  ${mark} ${r.id}${r.run ? `#${r.run + 1}` : ""}  ${dim(`${r.seconds}s ${r.toolCalls} tools${tok}`)}${flags ? red(`  ⚠ ${flags}`) : ""}${r.skipped ? dim(`  (${r.skipped})`) : ""}`)
+    if (verbose && !r.pass && !r.skipped) {
+      if (r.error) console.log(dim(`      check: ${r.error.replace(/\s+/g, " ").slice(0, 400)}`))
+      if (r.agentTail) console.log(dim(r.agentTail.split("\n").map((l) => `      ${l}`).join("\n")))
+    }
   }
   const s = report.summary
   const delta = previous ? ` ${dim(`(was ${previous.summary.passRate}%)`)}` : ""
@@ -199,7 +213,7 @@ function latestFor(model: string): EvalReport | undefined {
 
 export async function evalCommand(argv: string[]): Promise<number> {
   if (argv[0] === "compare") return compare(argv.slice(1))
-  const args = parseArgs(argv, ["allow-unsandboxed"])
+  const args = parseArgs(argv, ["allow-unsandboxed", "verbose"])
   let tasks = loadTasks()
   const tag = str(args, "tag")
   const only = str(args, "tasks")?.split(",")
@@ -254,7 +268,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
     summary: summarize(results),
   }
   const previous = latestFor(model)
-  printReport(report, previous)
+  printReport(report, previous, Boolean(args.flags.verbose))
   mkdirSync(RESULTS_DIR, { recursive: true })
   const file = join(RESULTS_DIR, `${report.date.slice(0, 16).replace(/[:T]/g, "")}-${slugify(model)}.json`)
   writeFileSync(file, JSON.stringify(report, null, 2) + "\n")

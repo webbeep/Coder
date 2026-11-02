@@ -1,7 +1,8 @@
 // `coder doctor`: is everything installed, safe, and reachable?
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { compose } from "./config"
+import { findSkills } from "./extend"
 import { probe } from "./connect/probe"
 import { coderHome, paths } from "./paths"
 import { detectPlatform, which } from "./platform"
@@ -50,6 +51,14 @@ export async function doctor(argv: string[]): Promise<number> {
   else ok("Web fetch and search are off")
 
   const composed = compose({ settings, sandbox: sb, cwd: process.cwd() })
+
+  // What Coder adds to every request, on top of OpenCode's own ~5k-token prompt and tools.
+  const size = (f: string) => (existsSync(f) ? readFileSync(f, "utf8").length : 0)
+  const skillDescriptions = (composed.config.skills as string[]).flatMap((d) => (existsSync(d) ? findSkills(d, 1) : [])).reduce((n, s) => n + s.name.length + s.description.length, 0)
+  const added = size(join(paths.knowledge, "INDEX.md")) + size(paths.memory()) + skillDescriptions
+  const tokens = Math.round(added / 4)
+  if (tokens > 3000) warn(`Coder adds ~${tokens} tokens to every request (knowledge index, memory, skill list). Consider trimming INDEX.md.`)
+  else ok(`Coder adds ~${tokens} tokens to every request (knowledge index, memory, skill list)`)
   for (const w of composed.warnings) if (!w.startsWith("Sandbox")) warn(w)
   const providers = composed.config.providers as Record<string, any>
   if (Object.keys(providers).length) {
