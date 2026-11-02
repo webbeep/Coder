@@ -57,7 +57,8 @@ async function run(cmd: string[], env: Record<string, string>, cwd = process.cwd
     writeExecPlan(plan, cmd, env)
     return 0
   }
-  const proc = Bun.spawn(cmd, { cwd, env: { ...process.env, ...env }, stdin: "inherit", stdout: "inherit", stderr: "inherit" })
+  // OpenCode reads PWD before process.cwd() to find the project, so keep them in sync.
+  const proc = Bun.spawn(cmd, { cwd, env: { ...process.env, ...env, PWD: cwd }, stdin: "inherit", stdout: "inherit", stderr: "inherit" })
   return await proc.exited
 }
 

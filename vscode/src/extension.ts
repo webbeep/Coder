@@ -40,11 +40,13 @@ function startTerminal(context: vscode.ExtensionContext, args: string[], title =
       .then((choice) => choice && vscode.commands.executeCommand("workbench.action.openSettings", "coder.path"))
     return undefined
   }
+  const cwd = workspaceDir()
   const options: vscode.TerminalOptions = {
     name: title,
-    cwd: workspaceDir(),
+    cwd,
     location: { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
-    env: { CODER_CALLER: "vscode" },
+    // OpenCode finds the project from PWD, so it must be the workspace, not VS Code's own folder.
+    env: { CODER_CALLER: "vscode", ...(cwd ? { PWD: cwd } : {}) },
     // Run the launcher directly instead of typing into a shell: no quoting differences between shells.
     shellPath: isWin ? (process.env.ComSpec ?? "cmd.exe") : launcher,
     shellArgs: isWin ? ["/d", "/c", launcher, ...args] : args,

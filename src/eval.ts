@@ -238,7 +238,8 @@ export async function evalCommand(argv: string[]): Promise<number> {
   const agent: AgentRunner = async (task, workdir) => {
     const proc = Bun.spawn([bin, "run", "--standalone", "--format", "json", "--model", model, task.prompt], {
       cwd: workdir,
-      env: { ...process.env, ...composed.env },
+      // OpenCode takes its project folder from PWD before the real cwd, so PWD must match.
+      env: { ...process.env, ...composed.env, PWD: workdir },
       stdin: "ignore",
       stdout: "pipe",
       stderr: "pipe",
