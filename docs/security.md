@@ -37,6 +37,10 @@ Two principles:
 | 14 | **Pinned, verified downloads** | `upstream.json`, launchers | Bun is checked by SHA-256 (hard-coded in the launchers); the OpenCode CLI by npm SRI sha512; desktop builds by the release's SHA-256; npm dependencies through frozen lockfiles with install scripts off. Upgrades are PRs ([upgrading.md](upgrading.md)). |
 | 15 | **Server exposure** | `src/launch.ts` | `coder serve` binds to 127.0.0.1 with a random password and refuses other addresses unless you pass `--allow-network`. Remote use goes through SSH. |
 | 16 | **Audit log** | tool hook | One JSON line per tool call (time, folder, session, tool, status, truncated input) in `<coder home>/audit/YYYY-MM-DD.jsonl`, ready to forward to a SIEM. |
+| 17 | **Imported skills are scanned** | `src/extend.ts` | Every text file of an imported skill goes through the same scanner as knowledge writes. Flagged skills are refused until reviewed (`--force`). Git imports are shallow, without submodules. |
+| 18 | **MCP imports keep tokens out of config** | `src/extend.ts` | Literal tokens in `env` and `headers` of imported MCP configs become 0600 key files referenced as `{file:…}`. Local servers start with no network until hosts are allowed. |
+| 19 | **Plugins are pinned and confirmed** | `src/extend.ts` | npm plugins need an exact version. Adding one shows that it runs unsandboxed and asks for confirmation. The agent can't write to the personal plugin folder. |
+| 20 | **Eval runs are isolated** | `src/config.ts`, `src/eval.ts` | Benchmarks auto-approve edits and commands, but only with the sandbox available (or an explicit `--allow-unsandboxed`). Their config lives in a separate folder, so their rules never reach a normal session. |
 
 Check your machine with `./coder doctor` (and `./coder doctor --test` to run a command inside the sandbox).
 
@@ -56,6 +60,8 @@ Check your machine with `./coder doctor` (and `./coder doctor --test` to run a c
   formats. Reviewing knowledge PRs is still the real control for shared context.
 - **MCP server instructions** that a server injects into the system prompt aren't pinned, only its
   tools. Only add MCP servers you trust.
+- **Plugins and custom tools run unsandboxed** inside the OpenCode server. Coder pins and confirms
+  them, but it can't contain them. Prefer MCP servers for integrations.
 - **Desktop app:** Coder uses the official, checksum-verified OpenCode desktop build. Its updater is
   blocked by the launch flags, a best-effort measure. Building the desktop app from source with the
   updater removed is on the roadmap.
